@@ -34,7 +34,7 @@ contract  BillCoin {
 	// Constructor
 	function BillCoin(uint256 _initialAmount) payable {
 		// erc 20
-		balances[msg.sender] = _initialAmount; // puts all initial supply in the K creator's account.  Could also use 'this' to put them in this contract instead.
+		balances[this] = _initialAmount; // puts all initial supply in the K creator's account.  Could also use 'this' to put them in this contract instead.
 		totalSupply = _initialAmount; // allows anyone to call on totalSupply and get the total supply at any time;
 		// human
 		name = "billCoin";
@@ -93,10 +93,10 @@ contract  BillCoin {
 	// minter functions
 	function mint(uint256 _amountToMint) onlyMinter {
 		// mint the funds
-		balances[centralMinter] += _amountToMint;  // increase the minter's supply
+		balances[this] += _amountToMint;  // increase the minter's supply
 		totalSupply += _amountToMint;  // increase total supply 
 		// publicize that a transfer was made from the contract to the minter
-		Transfer(this, centralMinter, _amountToMint);
+		Transfer(this, this, _amountToMint);
 	}
 
 	function transferMinter(address _newMinter) onlyMinter {
@@ -114,24 +114,24 @@ contract  BillCoin {
 	function buy() payable returns (uint amount){
 		amount = msg.value / buyPrice;
 		// validate request 
-		if (balances[centralMinter] < amount) throw; // validate there are enough tokens minted
-		balances[centralMinter] -= amount;
+		if (balances[this] < amount) throw; // validate there are enough tokens minted
+		balances[this] -= amount;
 		balances[msg.sender] += amount;
 		// publicize the transfer
-		Transfer(centralMinter, msg.sender, amount);
+		Transfer(this, msg.sender, amount);
 		// return the amount
 		return amount;
 	}
 
 	function sell(uint _amount) returns (uint revenue) {
 		if (balances[msg.sender] < _amount) throw;
-		balances[centralMinter] += _amount;
+		balances[this] += _amount;
 		balances[msg.sender] -= _amount;
 		revenue = _amount * sellPrice;
 		if (!msg.sender.send(revenue)) {
 			throw;
 		} else {
-			Transfer(msg.sender, centralMinter, _amount);
+			Transfer(msg.sender, this, _amount);
 			return revenue;
 		}
 	}

@@ -32,7 +32,7 @@ function runCli(){  // main function that runs the CLI
         type: "list",
         name: "action",
         message: "What action would you like to take?",
-        choices: ["Buy", "Sell", "Get total supply", "Get token deets", "View Balances", "Re-set Buy/Sell Price", "Exit"]
+        choices: ["Buy", "Sell", "Transfer", "Get token deets", "View BillCoin Balances", "View Ether Balances", "Mint BillCoin", "Set Buy/Sell Price", "Exit"]
     }]).then(function(answer){
         switch(answer.action) {
             case "Buy":
@@ -41,17 +41,23 @@ function runCli(){  // main function that runs the CLI
             case "Sell":
                 sellBillCoin()
                 break;
-            case "Get total supply":
-                getTotalSupply();
+            case "Transfer":
+                transferBillCoin();
                 break;
             case "Get token deets":
                 getTokenDeets();
                 break;
-            case "View Balances":
-                viewBalances();
+            case "View BillCoin Balances":
+                viewBillCoinBalances();
                 break;
-            case "Re-set Buy/Sell Price":
-                resetBuySellPrice();
+            case "View Ether Balances":
+                viewEtherBalances();
+                break;
+            case "Mint BillCoin":
+                mintBillCoin();
+                break;
+            case "Set Buy/Sell Price":
+                setBuySellPrice();
                 break;
             case "Exit":
                 process.exit();
@@ -63,12 +69,6 @@ function runCli(){  // main function that runs the CLI
 }
 
 /* functions to cary out specific CLI actions */
-function getTotalSupply(){
-    var supplyInEther = myContractInstance.totalSupply.call().toNumber();
-	console.log("total BillCoin supply =", supplyInEther); 
-	// return to CLI
-	runCli();
-}
 
 function getTokenDeets(){
     console.log("Coin Deets...")
@@ -77,35 +77,45 @@ function getTokenDeets(){
 	console.log(">> Coin Symbol:", web3.toAscii(myContractInstance.symbol.call())); 
 	console.log(">> Coin Version:", web3.toAscii(myContractInstance.version.call()));
     console.log(">> Minter's Address:", myContractInstance.centralMinter.call());
-    console.log(">> Buy Price:", myContractInstance.buyPrice.call().toNumber()); 
-	console.log(">> Sell Price:", myContractInstance.sellPrice.call().toNumber());
-    console.log(">> Contract Reserves in Ether:", web3.fromWei(web3.eth.getBalance(billCoinAddress).toNumber(), 'ether'));
-	console.log(">> Total BillCoin supply:", myContractInstance.totalSupply.call().toNumber()); 
+    console.log(">> Buy Price:", web3.fromWei(myContractInstance.buyPrice.call().toNumber(), 'ether') + " Ether"); 
+	console.log(">> Sell Price:", web3.fromWei(myContractInstance.sellPrice.call().toNumber()) + " Ether");
+    console.log(">> Contract's Reserves of Ether:", web3.fromWei(web3.eth.getBalance(billCoinAddress).toNumber(), 'ether'));
+	console.log(">> Total BillCoin supply:", myContractInstance.totalSupply.call().toNumber());
+    console.log(">> Total BillCoin in the contract:", myContractInstance.balanceOf.call(billCoinAddress).toNumber()); 
 	// return to CLI
 	runCli();
 }
 
-function viewBalances(){
+function viewBillCoinBalances(){
     console.log("BillCoin Balances...")
     for (var i = 0; i < testRpcAddressesArray.length; i++){
         console.log(">>", testRpcAddressesArray[i]);
         console.log(">> = " + myContractInstance.balances.call(testRpcAddressesArray[i]).toNumber());
     }
-    
-    //console.log(myContractInstance.balances.call());
-    
+    // return to CLI
+    runCli();
 }
 
-function resetBuySellPrice(){
+function viewEtherBalances(){
+    console.log("Ether Balances...")
+    for (var i = 0; i < testRpcAddressesArray.length; i++){
+        console.log(">>", testRpcAddressesArray[i]);
+        console.log(">> = " + web3.fromWei(web3.eth.getBalance(testRpcAddressesArray[i]), 'ether') + " Ether");
+    }
+    // return to CLI
+    runCli();
+}
+
+function setBuySellPrice(){
     inquirer.prompt([
         {
             type: "input",
-            name: "buy",
+            name: "buyPrice",
             message: "What is the buy price (in ether)?",
         },
         {
             type: "input",
-            name: "sell",
+            name: "sellPrice",
             message: "What is the sell price (in ether)?",
         }
     ]).then(function(answer){
@@ -113,8 +123,10 @@ function resetBuySellPrice(){
         var transactionObject = {
             from: testRpcAddressesArray[0], // address that the transaction is sent from 
         };
+        var buyPriceInEther = web3.toWei(answer.buyPrice, 'ether');
+        var sellPriceInEther = web3.toWei(answer.sellPrice, 'ether');
         // log the result
-        console.log("returned:", myContractInstance.setPrices.sendTransaction(answer.buy,answer.sell, transactionObject));
+        console.log("returned:", myContractInstance.setPrices.sendTransaction(buyPriceInEther,sellPriceInEther, transactionObject));
         // restart the CLI
         runCli();
     });
@@ -165,6 +177,54 @@ function sellBillCoin(){
         };
         // log the result
         console.log("returned:", myContractInstance.sell.sendTransaction(answer.amount, transactionObject));
+        // restart cli
+        runCli();
+    });
+}
+
+function transferBillCoin(){
+    inquirer.prompt([
+        {
+            type: "input",
+            name: "fromAddress",
+            message: "What address is sending BillCoin?",
+        },
+        {
+            type: "input",
+            name: "toAddress",
+            message: "What address is the BillCoin being sent to?",
+        },
+        {
+            type: "input",
+            name: "amount",
+            message: "How much BillCoin are you transfering?",
+        }
+    ]).then(function(answer){
+        // build transaction object
+        var transactionObject = {
+            from: answer.fromAddress, // address that the transaction is sent from
+        };
+        // log the result
+        console.log("returned:", myContractInstance.transfer.sendTransaction(answer.toAddress, answer.amount, transactionObject));
+        // restart cli
+        runCli();
+    });
+}
+
+function mintBillCoin(){
+    inquirer.prompt([
+        {
+            type: "input",
+            name: "amount",
+            message: "How much BillCoin do you want to mint?",
+        }
+    ]).then(function(answer){
+        // build transaction object
+        var transactionObject = {
+            from: testRpcAddressesArray[0], // address that the transaction is sent from
+        };
+        // log the result
+        console.log("returned:", myContractInstance.mint.sendTransaction(answer.amount, transactionObject));
         // restart cli
         runCli();
     });
