@@ -4,9 +4,9 @@ The version of the coin in this repo is meant to be deployed on TestRPC and acce
 
 ## About this repo
 This repo contains three main parts:
-(1) the token contract itself
-(2) a javascript file for deploying the contract
-(3) a node-based CLI for interacting with the contract
+1. the token contract itself
+2. a javascript file for deploying the contract
+3. a node-based CLI for interacting with the contract
 
 ## How to use this repo
 * clone the repo
